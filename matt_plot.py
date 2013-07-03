@@ -82,7 +82,7 @@ def merge_kwargs(decor,kwargs):
                 pass
 
 def crop(filename): 
-    """ Call PDFCrop on a file, and replace it with its cropped version """
+   """ Call PDFCrop on a file, and replace it with its cropped version """
    r = sarge.capture_stdout("pdfcrop %s" % (filename))
    if r.returncode  > 0: 
        print "PDFCrop error, return code %d\n\t%s" % (r.returncode, r.stdout.text)
