@@ -33,13 +33,14 @@ matt_plot.py: A utility belt for matplotlib
 
     Multi-word values can be specified by wrapping the value in quotes
 """
+import os.path
+import sarge
+import shlex 
+import shutil
 
 from matplotlib import rc
 import matplotlib.pyplot as plt
-import shlex 
-import sarge
-import os.path
-import shutil
+import numpy as np
 
 #configs: This should likely be set in a decor file; FIXME
 rc('text',usetex=True)
@@ -82,7 +83,7 @@ def merge_kwargs(decor,kwargs):
                 pass
 
 def crop(filename): 
-    """ Call PDFCrop on a file, and replace it with its cropped version """
+   """ Call PDFCrop on a file, and replace it with its cropped version """
    r = sarge.capture_stdout("pdfcrop %s" % (filename))
    if r.returncode  > 0: 
        print "PDFCrop error, return code %d\n\t%s" % (r.returncode, r.stdout.text)
@@ -193,3 +194,37 @@ def print_decorfile_sample(params_exist):
     for p in sorted(params_exist): 
         print "%s\t\"NEW_NAME\"" % (format_str.format(p[len(prefix):]).replace("_","-"))
 
+
+def check_data(data):
+    l = None
+    for d in data:
+        if l is not None:
+            assert len(d) == l, "Bad dimensions"
+        else: 
+            l = len(d) 
+    assert l is not None
+    return l 
+
+def grouped_barplot(data, labels, **kwargs): 
+    """
+    data is a list of data sets to plot as grouped bars
+    - Sum of bar widths for each group apparently needs to sum to 1
+    """
+    N = check_data(data)
+    assert len(labels) == len(data), "Label dimensions bad %s %s" % (len(labels), len(data)) 
+    gap = 0.2 
+    width = float(1 - gap) / N 
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    ind = np.arange(N)
+    
+    rectangles = []
+    for i,d in enumerate(data): 
+        r =  ax.bar(ind + i*width, d, width, color=plt.get_cmap('jet')(float(i)/(len(data)-1)) )
+        rectangles.append(r)
+
+    ax.legend( tuple(rectangles), tuple(labels)  )
+
+    "Need to be able to set xticks!" 
