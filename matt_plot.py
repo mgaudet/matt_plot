@@ -94,9 +94,10 @@ def legend(filename, **kwargs):
     """ Manufacture legend, and save; Is always cropped """ 
     ax = plt.gca()
     figure = plt.figure(figsize=(200,200))
-    plt.figlegend(*ax.get_legend_handles_labels(), loc='upper left')
+    r = plt.figlegend(*ax.get_legend_handles_labels(), loc='upper left')
     figure.savefig(filename, format="pdf")
     crop(filename)
+    return r 
 
 def figure(**kwargs):
     """ Create a matt_plot figure, which has a default size and labels """ 
@@ -144,6 +145,12 @@ def process_decor_file(f):
     return decor
 
 def plot(X,Y, **kwargs): 
+    return doplot(X,Y,plt.plot, **kwargs) 
+
+def errorbar(X,Y, **kwargs):
+    return doplot(X, Y, plt.errorbar, **kwargs)
+
+def doplot(X,Y,function, **kwargs): 
     """
     If a 'decor_file' kwarg is provided to mattplot, then 
     decor parameters are read from that file, and used. 
@@ -159,7 +166,7 @@ def plot(X,Y, **kwargs):
         decor = {}
         merge_kwargs(decor, kwargs)  #Strips out decor_file key if exists
         print "DECOR: Plotting with decor: %s" % (decor) 
-        plt.plot(X,Y,**decor)
+        return function(X,Y,**decor)
     else:
         #Should really memoize this... but I dont see it being a huge issue
         with open(kwargs["decor_file"]) as f: 
@@ -175,7 +182,7 @@ def plot(X,Y, **kwargs):
             merge_kwargs(l_decor,kwargs) 
             print "DECOR: Plotting with l_decor: %s (no decor for label)" % (l_decor) 
         
-        plt.plot(X,Y, **l_decor)
+        return function(X,Y, **l_decor)
 
 def savefig(filename, **kwargs): 
    """ tighten layout, save figure, crop """ 
