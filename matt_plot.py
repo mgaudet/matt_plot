@@ -141,7 +141,10 @@ def process_decor_file(f):
         except TypeError:
             pass
         del decor_elem["olabel"]
+        #Be insensitive to _ - distinction
         decor[name] = decor_elem
+        decor[name.replace("-","_")] = decor_elem
+        decor[name.replace("_","-")] = decor_elem
     return decor
 
 def plot(X,Y, **kwargs): 
@@ -212,26 +215,72 @@ def check_data(data):
     assert l is not None
     return l 
 
-def grouped_barplot(data, labels, **kwargs): 
+def map_decor_labels(labs, decor):
+    out = []
+    for l in labs:
+        rep = l.replace("_","-")
+        if rep in decor:
+            out.append(decor[rep]["label"])
+        else:
+            out.append(l.replace("_","-"))
+    return out
+
+def fix_labels(labs, decor=None): 
+    if decor:
+        return map(lambda x: x.replace("_","-"), labs)
+    else:
+        return map_decor_labels(labs, decor)
+
+def grouped_barplot(data, unsafe_labels, ticklabels, **kwargs): 
     """
     data is a list of data sets to plot as grouped bars
     - Sum of bar widths for each group apparently needs to sum to 1
     """
+    if "decor_file" in kwargs: 
+        with open(kwargs["decor_file"]) as f:
+            decors = process_decor_file(f)
+        print "DECOR FILE: {}".format(decors)
+        labels = fix_labels(unsafe_labels,decors)
+    else:
+        decors = {} 
+        labels = fix_labels(unsafe_labels)
+
     N = check_data(data)
     assert len(labels) == len(data), "Label dimensions bad %s %s" % (len(labels), len(data)) 
+    assert len(ticklabels) == N, "Tick label dims bad" 
     gap = 0.2 
     width = float(1 - gap) / N 
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
+    #fig = plt.figure()
+    #ax = fig.add_subplot(111)
+    ax = plt.gca()
 
     ind = np.arange(N)
     
     rectangles = []
-    for i,d in enumerate(data): 
-        r =  ax.bar(ind + i*width, d, width, color=plt.get_cmap('jet')(float(i)/(len(data)-1)) )
+
+    for i,d in enumerate(data):
+        olabel = labels[i]
+        if olabel in decors:
+            decor = decors[olabel]
+        else:
+            decor = { "color" : plt.get_cmap('jet')(float(i)/(len(data)-1)) }
+
+        r =  ax.bar(ind + i*width, d, width, linewidth=0, **decor )
         rectangles.append(r)
 
-    ax.legend( tuple(rectangles), tuple(labels)  )
+    # ax.legend( tuple(rectangles), tuple(labels)  )
+    locs, ticks = plt.xticks()
+    plt.xticks(locs, ticklabels)
+    
+    #White lines
+    ax.grid(axis = 'y', color ='white', linestyle='-')
 
-    "Need to be able to set xticks!" 
+
+def remove_axes(axis): 
+    axis.spines['top'].set_visible(False)
+    axis.spines['right'].set_visible(False)
+    axis.tick_params(axis='both', direction='out')
+    axis.get_xaxis().tick_bottom()   # only needed ticks
+    axis.get_yaxis().tick_left()
+
