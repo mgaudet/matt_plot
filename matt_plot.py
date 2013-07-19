@@ -94,7 +94,9 @@ def legend(filename, **kwargs):
     """ Manufacture legend, and save; Is always cropped """ 
     ax = plt.gca()
     figure = plt.figure(figsize=(200,200))
-    r = plt.figlegend(*ax.get_legend_handles_labels(), loc='upper left')
+    print ax.get_legend_handles_labels()
+    print len(ax.get_legend_handles_labels()[0])
+    r = plt.figlegend(*ax.get_legend_handles_labels(), loc='upper left', ncol=len(ax.get_legend_handles_labels()[0]) )
     figure.savefig(filename, format="pdf")
     crop(filename)
     return r 
@@ -222,13 +224,15 @@ def map_decor_labels(labs, decor):
         if rep in decor:
             out.append(decor[rep]["label"])
         else:
-            out.append(l.replace("_","-"))
+            print "Didn't find {} in decor".format(rep)
+            out.append(rep)
     return out
 
 def fix_labels(labs, decor=None): 
-    if decor:
+    if decor is None:
         return map(lambda x: x.replace("_","-"), labs)
     else:
+        print "mapping decor"
         return map_decor_labels(labs, decor)
 
 def grouped_barplot(data, unsafe_labels, ticklabels, **kwargs): 
@@ -236,7 +240,7 @@ def grouped_barplot(data, unsafe_labels, ticklabels, **kwargs):
     data is a list of data sets to plot as grouped bars
     - Sum of bar widths for each group apparently needs to sum to 1
     """
-    if "decor_file" in kwargs: 
+    if "decor_file" in kwargs and kwargs["decor_file"] is not None: 
         with open(kwargs["decor_file"]) as f:
             decors = process_decor_file(f)
         print "DECOR FILE: {}".format(decors)
@@ -258,13 +262,17 @@ def grouped_barplot(data, unsafe_labels, ticklabels, **kwargs):
     ind = np.arange(N)
     
     rectangles = []
-
+    
     for i,d in enumerate(data):
-        olabel = labels[i]
+        olabel = unsafe_labels[i].replace("_","-")
+        print olabel
         if olabel in decors:
             decor = decors[olabel]
         else:
-            decor = { "color" : plt.get_cmap('jet')(float(i)/(len(data)-1)) }
+            if len(data) > 1: 
+                decor = { "color" : plt.get_cmap('jet')(float(i)/(len(data)-1)) }
+            else:
+                decor = {}
 
         r =  ax.bar(ind + i*width, d, width, linewidth=0, **decor )
         rectangles.append(r)
@@ -274,7 +282,7 @@ def grouped_barplot(data, unsafe_labels, ticklabels, **kwargs):
     plt.xticks(locs, ticklabels)
     
     #White lines
-    ax.grid(axis = 'y', color ='white', linestyle='-')
+    ax.grid(axis = 'y', color ='white', linestyle='-', linewidth=2)
 
 
 def remove_axes(axis): 
