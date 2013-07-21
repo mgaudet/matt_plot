@@ -45,7 +45,12 @@ import numpy as np
 #configs: This should likely be set in a decor file; FIXME
 rc('text',usetex=True)
 rc('font',family='serif', size=26)
-rc('lines',linewidth=4)
+
+rc('axes',titlesize=26*.7)
+rc('axes',labelsize=26*.7)
+rc('axes',edgecolor='#BDBDBD')
+
+rc('lines',linewidth=3)
 
 fs = (5,5)
 
@@ -82,6 +87,13 @@ def merge_kwargs(decor,kwargs):
             else:
                 pass
 
+def clean_decors(decors, blacklist):
+    """ Delete non-sensical, blacklisted, decor elements from decor set """ 
+    for decor in decors:
+        for k in blacklist:
+            if k in decors[decor]: 
+                del decors[decor][k]
+
 def crop(filename): 
    """ Call PDFCrop on a file, and replace it with its cropped version """
    r = sarge.capture_stdout("pdfcrop %s" % (filename))
@@ -116,13 +128,13 @@ def process_decor_file(f):
 
     Each line is a mapping: 
         
-        <label> <new_label> <line_colour> <line_width> <marker_size> <marker> 
+        <label> <new_label> <line_colour> <line_width> <marker_size> <marker> <hatching>
 
     Everything past the new label is optional.
     """
     global prefix
     decor = {}
-    keys = ["olabel", "label", "color", "lw" , "ms", "marker"] 
+    keys = ["olabel", "label", "color", "lw" , "ms", "marker", "hatch"] 
     for l in f: 
         elems = shlex.split(l,comments=True)
         if len(elems) < 2: 
@@ -176,6 +188,7 @@ def doplot(X,Y,function, **kwargs):
         #Should really memoize this... but I dont see it being a huge issue
         with open(kwargs["decor_file"]) as f: 
             decor = process_decor_file(f) 
+            clean_decors(decor, ["hatch"])
         
         label = kwargs["label"]
         try: 
@@ -235,6 +248,7 @@ def fix_labels(labs, decor=None):
         print "mapping decor"
         return map_decor_labels(labs, decor)
 
+
 def grouped_barplot(data, unsafe_labels, ticklabels, **kwargs): 
     """
     data is a list of data sets to plot as grouped bars
@@ -245,10 +259,11 @@ def grouped_barplot(data, unsafe_labels, ticklabels, **kwargs):
             decors = process_decor_file(f)
         print "DECOR FILE: {}".format(decors)
         labels = fix_labels(unsafe_labels,decors)
+        clean_decors(decors,["ms", "marker","lw"])
     else:
         decors = {} 
         labels = fix_labels(unsafe_labels)
-
+    print "Decors: {}".format(decors)
     N = check_data(data)
     assert len(labels) == len(data), "Label dimensions bad %s %s" % (len(labels), len(data)) 
     assert len(ticklabels) == N, "Tick label dims bad" 
@@ -274,15 +289,16 @@ def grouped_barplot(data, unsafe_labels, ticklabels, **kwargs):
             else:
                 decor = {}
 
-        r =  ax.bar(ind + i*width, d, width, linewidth=0, **decor )
+        r =  ax.bar(ind + i*width, d, width, linewidth=0, edgecolor='#2D2D2D', **decor  )
         rectangles.append(r)
 
     # ax.legend( tuple(rectangles), tuple(labels)  )
     locs, ticks = plt.xticks()
     plt.xticks(locs, ticklabels)
     
-    #White lines
-    ax.grid(axis = 'y', color ='white', linestyle='-', linewidth=2)
+    #White lines -- Turns out, these don't work at the figure sizes 
+    #I am working with. 
+    # ax.grid(axis = 'y', color ='white', linestyle='-', linewidth=2)
 
 
 def remove_axes(axis): 
@@ -291,4 +307,30 @@ def remove_axes(axis):
     axis.tick_params(axis='both', direction='out')
     axis.get_xaxis().tick_bottom()   # only needed ticks
     axis.get_yaxis().tick_left()
+
+def setAxLinesBW(ax):
+    """
+    Take each Line2D in the axes, ax, and convert the line style to be 
+    suitable for black and white viewing.
+
+    Modified from http://stackoverflow.com/questions/7358118/matplotlib-black-white-colormap-with-dashes-dots-etc
+    """
+    MARKERSIZE = 3
+
+    COLORMAP = {
+        'b': {'marker': None, 'dash': (None,None)},
+        'g': {'marker': None, 'dash': [5,5]},
+        'r': {'marker': None, 'dash': [5,3,1,3]},
+        'c': {'marker': None, 'dash': [1,3]},
+        'm': {'marker': None, 'dash': [5,2,5,2,5,10]},
+        'y': {'marker': None, 'dash': [5,3,1,2,1,10]},
+        'k': {'marker': 'o', 'dash': (None,None)} #[1,2,1,10]}
+        }
+
+    for i,line in enumerate(ax.get_lines()):
+        origColor = line.get_color()
+        line.set_color('black')
+        line.set_dashes(COLORMAP[origColor]['dash'])
+        line.set_marker(COLORMAP[origColor]['marker'])
+        line.set_markersize(MARKERSIZE)
 
