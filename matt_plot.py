@@ -37,6 +37,7 @@ import os.path
 import sarge
 import shlex 
 import shutil
+import matplotlib.patheffects as PathEffects
 
 from matplotlib import rc
 import matplotlib.pyplot as plt
@@ -115,9 +116,9 @@ def legend(filename, **kwargs):
 
 def figure(**kwargs):
     """ Create a matt_plot figure, which has a default size and labels """ 
-    decor = {"figsize" : fs} 
-    merge_kwargs(decor,kwargs)
-    fig = plt.figure(**decor)
+    if "figsize" not in kwargs: 
+        kwargs["figsize"] = fs
+    fig = plt.figure(**kwargs)
     plt.xlabel("TBD")
     plt.ylabel("DO FILL IN")
     return fig
@@ -278,6 +279,7 @@ def grouped_barplot(data, unsafe_labels, ticklabels, **kwargs):
     
     rectangles = []
     
+    used = [0]*N
     for i,d in enumerate(data):
         olabel = unsafe_labels[i].replace("_","-")
         print olabel
@@ -288,8 +290,23 @@ def grouped_barplot(data, unsafe_labels, ticklabels, **kwargs):
                 decor = { "color" : plt.get_cmap('jet')(float(i)/(len(data)-1)) }
             else:
                 decor = {}
+        locs = ind + i*width
+        r =  ax.bar(locs , d, width, linewidth=0, edgecolor='#2D2D2D', **decor  )
+        
+        if "ylims" in kwargs: 
+            #print "Bounds {}".format(kwargs["ylims"])
+            upper = kwargs["ylims"][1]
+            lower = kwargs["ylims"][0]
+            print "Upper: {}".format(upper)
+            for e_index,e in enumerate(d):
+                if e > upper: 
+                    print "Annotating location {},{} with text {}".format(locs[e_index], upper*0.8, "{:.2f}".format(e))
+                    txt = ax.annotate("{:.2f}".format(e), 
+                            (locs[e_index], upper - (0.1*(upper - lower)*used[e_index])), fontsize=26*0.4 )
+                    txt.set_path_effects([PathEffects.withStroke(linewidth=3,
+                                                                  foreground="w")])
+                    used[e_index] = used[e_index] + 1
 
-        r =  ax.bar(ind + i*width, d, width, linewidth=0, edgecolor='#2D2D2D', **decor  )
         rectangles.append(r)
 
     # ax.legend( tuple(rectangles), tuple(labels)  )
